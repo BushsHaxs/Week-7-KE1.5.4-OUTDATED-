@@ -64,6 +64,9 @@ import lime.utils.Assets;
 import openfl.display.BlendMode;
 import openfl.display.StageQuality;
 import openfl.filters.ShaderFilter;
+import utils.Rank;
+import Config;
+import utils.AndroidData;
 
 #if windows
 import Discord.DiscordClient;
@@ -78,6 +81,8 @@ using StringTools;
 class PlayState extends MusicBeatState
 {
 	public static var instance:PlayState = null;
+
+	var data:AndroidData = new AndroidData();//data part 2 in line 1014
 
 	public static var curStage:String = '';
 	public static var SONG:SwagSong;
@@ -179,6 +184,7 @@ class PlayState extends MusicBeatState
 	var limo:FlxSprite;
 	var grpLimoDancers:FlxTypedGroup<BackgroundDancer>;
 	var fastCar:FlxSprite;
+	var cutsceneOp:Bool;
 	var songName:FlxText;
 	var upperBoppers:FlxSprite;
 	var bottomBoppers:FlxSprite;
@@ -792,9 +798,8 @@ class PlayState extends MusicBeatState
 								tower.frames = Paths.getSparrowAtlas('warzone/tankWatchtower');
 								tower.animation.addByPrefix('idle', 'watchtower gradient color', 24, false);
 								tower.antialiasing = true;
-								if(FlxG.save.data.distractions){
-									add(tower);
-								}
+
+								add(tower);
 
 								tankRolling = new FlxSprite(300,300);
 								tankRolling.frames = Paths.getSparrowAtlas('tankRolling');
@@ -1244,6 +1249,7 @@ class PlayState extends MusicBeatState
 		doof.finishThing = startCountdown;
 
 		Conductor.songPosition = -5000;
+		cutsceneOp = data.getCutscenes();
 		
 		strumLine = new FlxSprite(0, 50).makeGraphic(FlxG.width, 10);
 		strumLine.scrollFactor.set();
@@ -1441,6 +1447,10 @@ class PlayState extends MusicBeatState
 					schoolIntro(doof);
 				case 'thorns':
 					schoolIntro(doof);
+				case 'guns':
+					gunsIntro();
+				case 'stress':
+					stressIntro();
 				default:
 					startCountdown();
 			}
@@ -1461,6 +1471,43 @@ class PlayState extends MusicBeatState
 
 		super.create();
 	}
+	
+		function gunsIntro()
+		{
+			if (cutsceneOp){
+				var video = new VideoPlayer(0, 0, 'videos/gunscutscene.webm');
+				video.finishCallback = () -> {
+					remove(video);
+					startCountdown();
+				}
+				video.ownCamera();
+				video.setGraphicSize(Std.int(video.width * 2));
+				video.updateHitbox();
+				add(video);
+				video.play();
+			}
+			else{
+				startCountdown();
+			}
+		}
+		function stressIntro()
+		{
+			if (cutsceneOp){
+				var video = new VideoPlayer(0, 0, 'videos/stresscutscene.webm');
+				video.finishCallback = () -> {
+					remove(video);
+					startCountdown();
+				}
+				video.ownCamera();
+				video.setGraphicSize(Std.int(video.width * 2));
+				video.updateHitbox();
+				add(video);
+				video.play();
+			}
+			else{
+				startCountdown();
+			}
+		}
 
 	function schoolIntro(?dialogueBox:DialogueBox):Void
 	{
@@ -3121,23 +3168,15 @@ class PlayState extends MusicBeatState
 						camHUD.visible = false;
 
 						FlxG.sound.play(Paths.sound('Lights_Shut_off'));
-						}
+					}
+
+					FlxTransitionableState.skipNextTransIn = true;
+					FlxTransitionableState.skipNextTransOut = true;
+					
 					prevCamFollow = camFollow;
 
 					PlayState.SONG = Song.loadFromJson(poop, PlayState.storyPlaylist[0]);
 					FlxG.sound.music.stop();
-
-					switch(SONG.song.toLowerCase())
-					{
-						case 'guns':
-						LoadingState.loadAndSwitchState(new VideoState("assets/videos/gunsCutscene.webm", new PlayState()));
-
-						case 'stress':
-							LoadingState.loadAndSwitchState(new VideoState("assets/videos/stressCutscene.webm", new PlayState()));
-				
-						default:
-						LoadingState.loadAndSwitchState(new PlayState());
-					}
 
 					LoadingState.loadAndSwitchState(new PlayState());
 				}
@@ -4148,7 +4187,7 @@ class PlayState extends MusicBeatState
 
 				//picoSpeaker and running tankmen
 
-				if (curStage == 'warzone-stress')
+				if(SONG.song.toLowerCase() == 'stress')
 					{
 						//RIGHT
 						for(i in 0...picoStep.right.length)
